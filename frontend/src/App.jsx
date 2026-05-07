@@ -18,46 +18,6 @@ import {
   Cpu as CpuIcon, Database, Zap
 } from 'lucide-react';
 
-// --- MOCK DATA ---
-const mockMetrics = {
-  cpu_usage: 67.4,
-  ram_usage: 54.2,
-  disk_usage: 38.7,
-  network_in: 23.5,
-  network_out: 12.8,
-  cpu_history: [
-    { time: "10:30", value: 45 }, { time: "10:31", value: 52 },
-    { time: "10:32", value: 61 }, { time: "10:33", value: 58 },
-    { time: "10:34", value: 67 }, { time: "10:35", value: 71 },
-    { time: "10:36", value: 65 }, { time: "10:37", value: 70 },
-    { time: "10:38", value: 67 }, { time: "10:39", value: 74 }
-  ],
-  ram_history: [
-    { time: "10:30", value: 48 }, { time: "10:31", value: 50 },
-    { time: "10:32", value: 53 }, { time: "10:33", value: 55 },
-    { time: "10:34", value: 54 }, { time: "10:35", value: 56 },
-    { time: "10:36", value: 52 }, { time: "10:37", value: 54 },
-    { time: "10:38", value: 57 }, { time: "10:39", value: 54 }
-  ]
-};
-
-const mockContainers = [
-  { id: "a1b2c3d4e5f6", name: "nginx-proxy", image: "nginx:1.25-alpine", status: "running", cpu: 2.1, memory: "128 MB" },
-  { id: "b2c3d4e5f6g7", name: "api-server", image: "python:3.11-slim", status: "running", cpu: 8.4, memory: "512 MB" },
-  { id: "c3d4e5f6g7h8", name: "postgres-db", image: "postgres:15", status: "running", cpu: 3.2, memory: "256 MB" },
-  { id: "d4e5f6g7h8i9", name: "redis-cache", image: "redis:7-alpine", status: "paused", cpu: 0.1, memory: "64 MB" },
-  { id: "e5f6g7h8i9j0", name: "worker-queue", image: "celery:5.3", status: "stopped", cpu: 0.0, memory: "0 MB" },
-  { id: "f6g7h8i9j0k1", name: "grafana-monitor", image: "grafana:10.2", status: "running", cpu: 1.5, memory: "192 MB" }
-];
-
-const mockDeployments = [
-  { id: 1, version: "v2.4.1", service: "api-server", status: "SUCCESS", deployed_at: "2025-05-07T10:32:00Z", duration: "1m 24s", logs: "> Build started...\n> Tests passed (47/47)\n> Docker image built\n> Pushed to registry\n> Deployed to production\n> Health check passed ✓\n> Deployment complete" },
-  { id: 2, version: "v2.4.0", service: "nginx-proxy", status: "FAILED", deployed_at: "2025-05-07T09:15:00Z", duration: "0m 47s", logs: "> Build started...\n> Tests passed (47/47)\n> Docker image built\n> ERROR: Port 80 already in use\n> Rolling back to v2.3.9\n> Rollback complete\n> Manual intervention required" },
-  { id: 3, version: "v2.3.9", service: "worker-queue", status: "SUCCESS", deployed_at: "2025-05-06T22:00:00Z", duration: "2m 10s", logs: "> Build started...\n> All 62 tests passed\n> Image pushed to registry\n> Zero-downtime deploy started\n> Old containers drained\n> New containers healthy\n> Deployment complete" },
-  { id: 4, version: "v2.3.8", service: "postgres-db", status: "RUNNING", deployed_at: "2025-05-07T11:00:00Z", duration: "ongoing", logs: "> Migration started...\n> Step 1/7: Schema backup ✓\n> Step 2/7: Adding columns ✓\n> Step 3/7: Index rebuild... (in progress)\n> Estimated time remaining: 3 minutes" },
-  { id: 5, version: "v2.3.7", service: "redis-cache", status: "SUCCESS", deployed_at: "2025-05-06T18:45:00Z", duration: "0m 38s", logs: "> Build started...\n> Cache configuration updated\n> Flushing old cache\n> Applying new config\n> Restarting service\n> Health check passed ✓\n> Deployment complete" },
-  { id: 6, version: "v2.3.6", service: "grafana-monitor", status: "FAILED", deployed_at: "2025-05-06T14:20:00Z", duration: "1m 02s", logs: "> Build started...\n> Dependency conflict: grafana-plugin@3.1 vs @3.2\n> Build failed\n> Rolling back...\n> Rollback to v2.3.5 complete\n> Please resolve dependency conflict manually" }
-];
 
 const BASE_URL = "http://52.91.238.70:8000/api";
 
@@ -71,15 +31,6 @@ const Loader = () => (
   </div>
 );
 
-const DemoBanner = ({ show }) => {
-  if (!show) return null;
-  return (
-    <div className="bg-amber-900/20 border border-amber-500/30 text-amber-500 px-4 py-2 rounded-lg mb-6 flex items-center space-x-2 animate-in fade-in slide-in-from-top-4 duration-500">
-      <AlertCircle size={18} />
-      <span className="text-sm font-medium">Running in demo mode — backend offline</span>
-    </div>
-  );
-};
 
 const SidebarItem = ({ icon: Icon, label, to }) => {
   const location = useLocation();
@@ -265,12 +216,12 @@ const CustomTooltip = ({ active, payload, label }) => {
 const DashboardPage = ({ metrics, containers, deployments, refreshKey }) => (
   <div className="animate-in fade-in duration-500">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-      <MetricCard icon={Cpu} label="CPU Usage" value={metrics.cpu_usage} trend="↑ 4.2%" color="cyan" refreshKey={refreshKey} />
-      <MetricCard icon={Database} label="RAM Usage" value={metrics.ram_usage} trend="↓ 1.8%" color="purple" refreshKey={refreshKey} />
-      <MetricCard icon={HardDrive} label="Disk Usage" value={metrics.disk_usage} trend="→ Stable" color="amber" refreshKey={refreshKey} />
-      <MetricCard icon={Box} label="Containers" value={containers.length} trend={`${containers.filter(c => c.status === 'running').length} active`} color="blue" refreshKey={refreshKey} />
-      <MetricCard icon={CheckCircle} label="Success" value={deployments.filter(d => d.status === 'SUCCESS').length} trend="Last: 10m ago" color="green" refreshKey={refreshKey} />
-      <MetricCard icon={XCircle} label="Failures" value={deployments.filter(d => d.status === 'FAILED').length} trend="Last: 2h ago" color="red" refreshKey={refreshKey} />
+      <MetricCard icon={Cpu} label="CPU Usage" value={metrics.cpu_usage_percent} trend="LIVE" color="cyan" refreshKey={refreshKey} />
+      <MetricCard icon={Database} label="RAM Usage" value={metrics.memory_usage_percent} trend="LIVE" color="purple" refreshKey={refreshKey} />
+      <MetricCard icon={HardDrive} label="Disk Usage" value={metrics.disk_usage} trend="LIVE" color="amber" refreshKey={refreshKey} />
+      <MetricCard icon={Box} label="Containers" value={containers.length} trend="Total" color="blue" refreshKey={refreshKey} />
+      <MetricCard icon={CheckCircle} label="Success" value={deployments.filter(d => d.status === 'SUCCESS').length} trend="Total" color="green" refreshKey={refreshKey} />
+      <MetricCard icon={XCircle} label="Failures" value={deployments.filter(d => d.status === 'FAILED').length} trend="Total" color="red" refreshKey={refreshKey} />
     </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-6 mt-8">
@@ -294,8 +245,8 @@ const SystemHealthPanel = ({ metrics }) => (
     </div>
     
     <div className="space-y-6">
-      <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage} color="#00f5ff" icon={CpuIcon} />
-      <SystemMetricBar label="Physical Memory" value={metrics.ram_usage} color="#a855f7" icon={Database} />
+      <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage_percent} color="#00f5ff" icon={CpuIcon} />
+      <SystemMetricBar label="Physical Memory" value={metrics.memory_usage_percent} color="#a855f7" icon={Database} />
       <SystemMetricBar label="NVMe Storage" value={metrics.disk_usage} color="#f59e0b" icon={HardDrive} />
       <SystemMetricBar label="Network Inbound" value={metrics.network_in} color="#22c55e" icon={Activity} />
       <SystemMetricBar label="Network Outbound" value={metrics.network_out} color="#ef4444" icon={Shield} />
@@ -357,7 +308,7 @@ const ChartsPanel = ({ metrics }) => {
         </h3>
         <div className="h-[140px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={metrics.ram_history}>
+            <AreaChart data={metrics.memory_history}>
               <defs>
                 <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
@@ -580,14 +531,21 @@ const SettingsPage = () => (
 
 export default function App() {
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState(mockMetrics);
-  const [containers, setContainers] = useState(mockContainers);
-  const [deployments, setDeployments] = useState(mockDeployments);
+  const [metrics, setMetrics] = useState({
+    cpu_usage_percent: 0,
+    memory_usage_percent: 0,
+    disk_usage: 0,
+    network_in: 0,
+    network_out: 0,
+    cpu_history: Array(10).fill({ time: '--:--', value: 0 }),
+    memory_history: Array(10).fill({ time: '--:--', value: 0 })
+  });
+  const [containers, setContainers] = useState([]);
+  const [deployments, setDeployments] = useState([]);
   const [lastUpdated, setLastUpdated] = useState('');
   const [countdown, setCountdown] = useState(5);
   const [currentTime, setCurrentTime] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     const loaderTimer = setTimeout(() => setLoading(false), 1200);
@@ -600,31 +558,24 @@ export default function App() {
           axios.get(`${BASE_URL}/deployments/`)
         ]);
         
-        const formattedMetrics = {
-          ...mockMetrics,
-          cpu_usage: m.data.cpu_usage_percent || mockMetrics.cpu_usage,
-          ram_usage: m.data.memory_usage_percent || mockMetrics.ram_usage,
-          cpu_history: [...metrics.cpu_history.slice(1), { time: new Date().toLocaleTimeString().slice(0, 5), value: m.data.cpu_usage_percent }],
-          ram_history: [...metrics.ram_history.slice(1), { time: new Date().toLocaleTimeString().slice(0, 5), value: m.data.memory_usage_percent }]
-        };
-
-        setMetrics(formattedMetrics);
-        setContainers(c.data || mockContainers);
-        setDeployments(d.data || mockDeployments);
-        setDemoMode(false);
-      } catch {
-        setDemoMode(true);
-        setTimeout(() => setDemoMode(false), 3000);
-        
         setMetrics(prev => ({
           ...prev,
-          cpu_usage: parseFloat((prev.cpu_usage + (Math.random() * 10 - 5)).toFixed(1)),
-          ram_usage: parseFloat((prev.ram_usage + (Math.random() * 6 - 3)).toFixed(1)),
-          network_in: parseFloat((prev.network_in + (Math.random() * 4 - 2)).toFixed(1)),
-          network_out: parseFloat((prev.network_out + (Math.random() * 4 - 2)).toFixed(1)),
-          cpu_history: [...prev.cpu_history.slice(1), { time: new Date().toLocaleTimeString().slice(0, 5), value: parseFloat((prev.cpu_usage + Math.random() * 8 - 4).toFixed(1)) }],
-          ram_history: [...prev.ram_history.slice(1), { time: new Date().toLocaleTimeString().slice(0, 5), value: parseFloat((prev.ram_usage + Math.random() * 4 - 2).toFixed(1)) }]
+          cpu_usage_percent: m.data.cpu_usage_percent !== undefined ? m.data.cpu_usage_percent : prev.cpu_usage_percent,
+          memory_usage_percent: m.data.memory_usage_percent !== undefined ? m.data.memory_usage_percent : prev.memory_usage_percent,
+          cpu_history: [...prev.cpu_history.slice(1), { 
+            time: new Date().toLocaleTimeString().slice(0, 5), 
+            value: m.data.cpu_usage_percent !== undefined ? m.data.cpu_usage_percent : prev.cpu_usage_percent 
+          }],
+          memory_history: [...prev.memory_history.slice(1), { 
+            time: new Date().toLocaleTimeString().slice(0, 5), 
+            value: m.data.memory_usage_percent !== undefined ? m.data.memory_usage_percent : prev.memory_usage_percent 
+          }]
         }));
+
+        setContainers(c.data || []);
+        setDeployments(d.data || []);
+      } catch (err) {
+        console.error("Fetch error:", err);
       }
       setLastUpdated(new Date().toLocaleTimeString());
       setRefreshKey(k => k + 1);
@@ -652,8 +603,7 @@ export default function App() {
           <Navbar currentTime={currentTime} countdown={countdown} lastUpdated={lastUpdated} />
           
           <main className="flex-1 p-8 max-w-7xl mx-auto w-full overflow-y-auto">
-            <DemoBanner show={demoMode} />
-            
+              
             <Routes>
               <Route path="/" element={<DashboardPage metrics={metrics} containers={containers} deployments={deployments} refreshKey={refreshKey} />} />
               <Route path="/containers" element={<ContainersPage containers={containers} />} />
