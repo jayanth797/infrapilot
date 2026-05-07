@@ -5,6 +5,7 @@ from .views import (
     trigger_deployment,
     deployment_history
 )
+from .webhook_view import github_webhook
 from api.views import health_check
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('deploy/', trigger_deployment),
     path('deployments/', deployment_history),
     path('health/', health_check),
+    path('webhook/', github_webhook),
 ]

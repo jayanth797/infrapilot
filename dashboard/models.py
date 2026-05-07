@@ -10,18 +10,15 @@ class Deployment(models.Model):
     ]
 
     service = models.CharField(max_length=200)
-
     version = models.CharField(max_length=100)
-
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='RUNNING'
     )
-
     logs = models.TextField()
-
+    commit_hash = models.CharField(max_length=40, unique=True, null=True, blank=True)
     deployed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.service} - {self.status}"
+        return f"{self.service} - {self.version} ({self.commit_hash})"

@@ -13,22 +13,11 @@ def health_check(request):
     })
 
 
+from .monitor import monitor
+
 @api_view(['GET'])
 def system_metrics(request):
-    memory = psutil.virtual_memory()
-    disk = psutil.disk_usage('/')
-    network = psutil.net_io_counters()
-
-    data = {
-        "cpu_usage_percent": psutil.cpu_percent(interval=1),
-        "memory_usage_percent": memory.percent,
-        "memory_available_gb": round(memory.available / (1024 ** 3), 2),
-        "disk_usage_percent": disk.percent,
-        "network_in_mb": round(network.bytes_recv / (1024 ** 2), 2),
-        "network_out_mb": round(network.bytes_sent / (1024 ** 2), 2),
-    }
-
-    return Response(data)
+    return Response(monitor.get_data())
 
 
 @api_view(['GET'])
@@ -40,31 +29,63 @@ def docker_containers(request):
         container_data = []
 
         for container in containers:
+            stats = {}
+            if container.status == 'running':
+                try:
+                    stats = container.stats(stream=False)
+                except Exception:
+                    pass
+
+            # Calculate CPU %
+            cpu_percent = 0.0
+            if stats and 'cpu_stats' in stats and 'precpu_stats' in stats:
+                cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
+                system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
+                if system_delta > 0:
+                    cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage']['percpu_usage']) * 100.0
+
+            # Calculate Memory Usage
+            mem_usage = 0.0
+            if stats and 'memory_stats' in stats:
+                mem_usage = stats['memory_stats']['usage'] / (1024 * 1024) # MB
+
             container_data.append({
                 "id": container.short_id,
                 "name": container.name,
                 "status": container.status,
-                "image": container.image.tags
+                "image": container.image.tags[0] if container.image.tags else "untagged",
+                "cpu_percent": round(cpu_percent, 2),
+                "memory_mb": round(mem_usage, 2),
+                "uptime": container.attrs.get('State', {}).get('StartedAt', 'N/A'),
+                "ports": list(container.attrs.get('NetworkSettings', {}).get('Ports', {}).keys())
             })
 
         return Response(container_data)
 
-    except Exception:
+    except Exception as e:
+        print(f"Docker fetch error: {e}")
         mock_containers = [
             {
                 "id": "abc123",
-                "name": "infrapilot",
+                "name": "infrapilot-api",
                 "status": "running",
-                "image": ["infrapilot:latest"]
+                "image": "infrapilot:latest",
+                "cpu_percent": 1.2,
+                "memory_mb": 145.5,
+                "uptime": "2026-05-07T10:00:00Z",
+                "ports": ["8000/tcp"]
             },
             {
                 "id": "xyz456",
-                "name": "postgres-db",
+                "name": "infrapilot-db",
                 "status": "running",
-                "image": ["postgres:15"]
+                "image": "postgres:15",
+                "cpu_percent": 0.5,
+                "memory_mb": 89.2,
+                "uptime": "2026-05-07T09:30:00Z",
+                "ports": ["5432/tcp"]
             }
         ]
-
         return Response(mock_containers)
 
 
