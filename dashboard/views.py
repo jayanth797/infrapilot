@@ -15,12 +15,18 @@ def health_check(request):
 
 @api_view(['GET'])
 def system_metrics(request):
-    metrics = {
-        "cpu_usage_percent": psutil.cpu_percent(interval=1),
+    disk = psutil.disk_usage('/')
+    network = psutil.net_io_counters()
+
+    data = {
+        "cpu_usage_percent": psutil.cpu_percent(interval=0.1),
         "memory_usage_percent": psutil.virtual_memory().percent,
-        "memory_available_gb": round(psutil.virtual_memory().available / (1024 ** 3), 2)
+        "memory_available_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+        "disk_usage_percent": disk.percent,
+        "network_in_mb": round(network.bytes_recv / (1024**2), 2),
+        "network_out_mb": round(network.bytes_sent / (1024**2), 2),
     }
-    return Response(metrics)
+    return Response(data)
 
 
 @api_view(['GET'])

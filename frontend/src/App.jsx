@@ -218,10 +218,10 @@ const DashboardPage = ({ metrics, containers, deployments, refreshKey }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
       <MetricCard icon={Cpu} label="CPU Usage" value={metrics.cpu_usage_percent} trend="LIVE" color="cyan" refreshKey={refreshKey} />
       <MetricCard icon={Database} label="RAM Usage" value={metrics.memory_usage_percent} trend="LIVE" color="purple" refreshKey={refreshKey} />
-      <MetricCard icon={HardDrive} label="Disk Usage" value={metrics.disk_usage} trend="LIVE" color="amber" refreshKey={refreshKey} />
+      <MetricCard icon={HardDrive} label="Disk Usage" value={metrics.disk_usage_percent} trend="LIVE" color="amber" refreshKey={refreshKey} />
+      <MetricCard icon={Activity} label="Net In" value={metrics.network_in_mb} trend="MB/s" color="green" refreshKey={refreshKey} />
+      <MetricCard icon={Shield} label="Net Out" value={metrics.network_out_mb} trend="MB/s" color="red" refreshKey={refreshKey} />
       <MetricCard icon={Box} label="Containers" value={containers.length} trend="Total" color="blue" refreshKey={refreshKey} />
-      <MetricCard icon={CheckCircle} label="Success" value={deployments.filter(d => d.status === 'SUCCESS').length} trend="Total" color="green" refreshKey={refreshKey} />
-      <MetricCard icon={XCircle} label="Failures" value={deployments.filter(d => d.status === 'FAILED').length} trend="Total" color="red" refreshKey={refreshKey} />
     </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-6 mt-8">
@@ -247,16 +247,16 @@ const SystemHealthPanel = ({ metrics }) => (
     <div className="space-y-6">
       <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage_percent} color="#00f5ff" icon={CpuIcon} />
       <SystemMetricBar label="Physical Memory" value={metrics.memory_usage_percent} color="#a855f7" icon={Database} />
-      <SystemMetricBar label="NVMe Storage" value={metrics.disk_usage} color="#f59e0b" icon={HardDrive} />
-      <SystemMetricBar label="Network Inbound" value={metrics.network_in} color="#22c55e" icon={Activity} />
-      <SystemMetricBar label="Network Outbound" value={metrics.network_out} color="#ef4444" icon={Shield} />
+      <SystemMetricBar label="NVMe Storage" value={metrics.disk_usage_percent} color="#f59e0b" icon={HardDrive} />
+      <SystemMetricBar label="Network Inbound" value={metrics.network_in_mb} color="#22c55e" icon={Activity} />
+      <SystemMetricBar label="Network Outbound" value={metrics.network_out_mb} color="#ef4444" icon={Shield} />
     </div>
 
     <div className="mt-8 p-4 bg-[#0a0d14]/50 border border-[#1f2937] rounded-lg">
       <div className="text-[10px] text-gray-500 uppercase font-bold mb-2">Throughput History</div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col">
-          <span className="text-xl font-bold text-gray-100 font-mono">{(metrics.network_in + metrics.network_out).toFixed(1)}</span>
+          <span className="text-xl font-bold text-gray-100 font-mono">{(metrics.network_in_mb + metrics.network_out_mb).toFixed(1)}</span>
           <span className="text-[10px] text-gray-500">MB/s AVG</span>
         </div>
         <div className="flex space-x-1 items-end h-8">
@@ -534,9 +534,10 @@ export default function App() {
   const [metrics, setMetrics] = useState({
     cpu_usage_percent: 0,
     memory_usage_percent: 0,
-    disk_usage: 0,
-    network_in: 0,
-    network_out: 0,
+    memory_available_gb: 0,
+    disk_usage_percent: 0,
+    network_in_mb: 0,
+    network_out_mb: 0,
     cpu_history: Array(10).fill({ time: '--:--', value: 0 }),
     memory_history: Array(10).fill({ time: '--:--', value: 0 })
   });
@@ -552,31 +553,38 @@ export default function App() {
 
     const fetchAll = async () => {
       try {
-        const [m, c, d] = await Promise.all([
-          axios.get(`${BASE_URL}/metrics/`),
-          axios.get(`${BASE_URL}/containers/`),
-          axios.get(`${BASE_URL}/deployments/`)
-        ]);
-        
+        const m = await axios.get(`${BASE_URL}/metrics/`);
+        const rawData = m.data;
         setMetrics(prev => ({
           ...prev,
-          cpu_usage_percent: m.data.cpu_usage_percent !== undefined ? m.data.cpu_usage_percent : prev.cpu_usage_percent,
-          memory_usage_percent: m.data.memory_usage_percent !== undefined ? m.data.memory_usage_percent : prev.memory_usage_percent,
+          ...rawData,
           cpu_history: [...prev.cpu_history.slice(1), { 
             time: new Date().toLocaleTimeString().slice(0, 5), 
-            value: m.data.cpu_usage_percent !== undefined ? m.data.cpu_usage_percent : prev.cpu_usage_percent 
+            value: rawData.cpu_usage_percent 
           }],
           memory_history: [...prev.memory_history.slice(1), { 
             time: new Date().toLocaleTimeString().slice(0, 5), 
-            value: m.data.memory_usage_percent !== undefined ? m.data.memory_usage_percent : prev.memory_usage_percent 
+            value: rawData.memory_usage_percent 
           }]
         }));
+      } catch (err) {
+        console.error("Metrics fetch error:", err);
+      }
 
+      try {
+        const c = await axios.get(`${BASE_URL}/containers/`);
         setContainers(c.data || []);
+      } catch (err) {
+        console.error("Containers fetch error:", err);
+      }
+
+      try {
+        const d = await axios.get(`${BASE_URL}/deployments/`);
         setDeployments(d.data || []);
       } catch (err) {
-        console.error("Fetch error:", err);
+        console.error("Deployments fetch error:", err);
       }
+
       setLastUpdated(new Date().toLocaleTimeString());
       setRefreshKey(k => k + 1);
     };
