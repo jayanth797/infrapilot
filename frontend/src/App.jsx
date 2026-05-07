@@ -15,7 +15,7 @@ import {
   Cpu, HardDrive, Activity, LayoutDashboard, Box, 
   Bell, Clock, CheckCircle, 
   XCircle, AlertCircle, Settings, Terminal, Shield, 
-  Database, Zap, RefreshCcw
+  Cpu as CpuIcon, Database, Zap, RefreshCcw
 } from 'lucide-react';
 
 
@@ -143,20 +143,13 @@ const Navbar = ({ currentTime, countdown, lastUpdated }) => {
 
 // --- DATA COMPONENTS ---
 
-const MetricCard = ({ icon: Icon, label, value, trend, color, refreshKey, subValue, subLabel }) => {
+const MetricCard = ({ icon: Icon, label, value, trend, color, refreshKey }) => {
   const [pulse, setPulse] = useState(false);
-  
   useEffect(() => {
     setPulse(true);
     const t = setTimeout(() => setPulse(false), 500);
     return () => clearTimeout(t);
   }, [refreshKey]);
-
-  const formatValue = (val) => {
-    if (typeof val !== 'number') return val;
-    if (val > 1024) return (val / 1024).toFixed(2) + ' GB';
-    return val.toFixed(1) + (label.includes('Usage') ? '%' : '');
-  };
 
   return (
     <div className={`bg-[#111827] border border-[#1f2937] rounded-xl p-5 group hover:border-${color === 'cyan' ? 'cyan' : color}-500/50 transition-all duration-300 transform ${pulse ? 'scale-[1.02]' : 'scale-100'}`}>
@@ -170,18 +163,12 @@ const MetricCard = ({ icon: Icon, label, value, trend, color, refreshKey, subVal
       </div>
       <div>
         <div className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">{label}</div>
-        <div className="flex items-baseline space-x-2">
-          <div className="text-2xl font-bold font-mono text-gray-100">
-            {formatValue(value)}
-            {label.includes('Net') && !formatValue(value).includes('GB') ? ' MB' : ''}
-            {trend === 'MB/s' ? '/s' : ''}
-          </div>
+        <div className="text-2xl font-bold font-mono text-gray-100">
+          {typeof value === 'number' ? value.toFixed(1) : value}
+          <span className="text-sm ml-1 text-gray-500 font-normal">
+            {label.includes('Usage') ? '%' : label.includes('Net') ? ' MB' : ''}
+          </span>
         </div>
-        {subValue !== undefined && (
-          <div className="text-[10px] text-gray-500 font-mono mt-1">
-            {subLabel}: {subValue > 1024 ? (subValue/1024).toFixed(2) + ' GB' : subValue.toFixed(1) + ' MB'}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -195,7 +182,7 @@ const SystemMetricBar = ({ label, value, color, icon: Icon, unit = '%' }) => {
     <div className="space-y-2">
       <div className="flex justify-between items-center text-sm">
         <div className="flex items-center space-x-2">
-          <Icon size={14} style={{ color: isCritical ? '#ef4444' : color }} />
+          <Icon size={14} className={isCritical ? 'text-red-500' : `text-${color}-400`} />
           <span className={`font-medium ${isCritical ? 'text-red-500' : 'text-gray-300'}`}>{label}</span>
           {isCritical && <AlertCircle size={14} className="text-red-500 animate-pulse" />}
         </div>
@@ -229,14 +216,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 // --- PAGES ---
 
-const DashboardPage = ({ metrics, containers, refreshKey }) => (
+const DashboardPage = ({ metrics, containers, deployments, refreshKey }) => (
   <div className="animate-in fade-in duration-500">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
       <MetricCard icon={Cpu} label="CPU Usage" value={metrics.cpu_usage_percent} trend="LIVE" color="cyan" refreshKey={refreshKey} />
       <MetricCard icon={Database} label="RAM Usage" value={metrics.memory_usage_percent} trend="LIVE" color="purple" refreshKey={refreshKey} />
       <MetricCard icon={HardDrive} label="Disk Usage" value={metrics.disk_usage_percent} trend="LIVE" color="amber" refreshKey={refreshKey} />
-      <MetricCard icon={Activity} label="Net In" value={metrics.network_speed_in} trend="MB/s" color="green" refreshKey={refreshKey} subValue={metrics.network_in_mb} subLabel="Total RX" />
-      <MetricCard icon={Shield} label="Net Out" value={metrics.network_speed_out} trend="MB/s" color="red" refreshKey={refreshKey} subValue={metrics.network_out_mb} subLabel="Total TX" />
+      <MetricCard icon={Activity} label="Net In" value={metrics.network_in_mb} trend="MB/s" color="green" refreshKey={refreshKey} />
+      <MetricCard icon={Shield} label="Net Out" value={metrics.network_out_mb} trend="MB/s" color="red" refreshKey={refreshKey} />
       <MetricCard icon={Box} label="Containers" value={containers.length} trend="Total" color="blue" refreshKey={refreshKey} />
     </div>
 
@@ -261,19 +248,19 @@ const SystemHealthPanel = ({ metrics }) => (
     </div>
     
     <div className="space-y-6">
-      <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage_percent || 0} color="#00f5ff" icon={Cpu} />
-      <SystemMetricBar label="Physical Memory" value={metrics.memory_usage_percent || 0} color="#a855f7" icon={Database} />
-      <SystemMetricBar label="NVMe Storage" value={metrics.disk_usage_percent || 0} color="#f59e0b" icon={HardDrive} />
-      <SystemMetricBar label="Network Inbound" value={metrics.network_speed_in || 0} color="#22c55e" icon={Activity} unit=" MB/s" />
-      <SystemMetricBar label="Network Outbound" value={metrics.network_speed_out || 0} color="#ef4444" icon={Shield} unit=" MB/s" />
+      <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage_percent} color="#00f5ff" icon={CpuIcon} />
+      <SystemMetricBar label="Physical Memory" value={metrics.memory_usage_percent} color="#a855f7" icon={Database} />
+      <SystemMetricBar label="NVMe Storage" value={metrics.disk_usage_percent} color="#f59e0b" icon={HardDrive} />
+      <SystemMetricBar label="Network Inbound" value={metrics.network_in_mb} color="#22c55e" icon={Activity} unit=" MB" />
+      <SystemMetricBar label="Network Outbound" value={metrics.network_out_mb} color="#ef4444" icon={Shield} unit=" MB" />
     </div>
 
     <div className="mt-8 p-4 bg-[#0a0d14]/50 border border-[#1f2937] rounded-lg">
       <div className="text-[10px] text-gray-500 uppercase font-bold mb-2">Throughput History</div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col">
-          <span className="text-xl font-bold text-gray-100 font-mono">{(metrics.network_speed_in + metrics.network_speed_out).toFixed(1)}</span>
-          <span className="text-[10px] text-gray-500">MB/s TOTAL</span>
+          <span className="text-xl font-bold text-gray-100 font-mono">{(metrics.network_in_mb + metrics.network_out_mb).toFixed(1)}</span>
+          <span className="text-[10px] text-gray-500">MB/s AVG</span>
         </div>
         <div className="flex space-x-1 items-end h-8">
           {[3, 5, 8, 4, 9, 6, 12, 7, 10, 5].map((h, i) => (
@@ -311,7 +298,7 @@ const ChartsPanel = ({ metrics }) => {
               <XAxis dataKey="time" hide />
               <YAxis hide domain={[0, 100]} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="value" stroke="#00f5ff" strokeWidth={2} fillOpacity={1} fill="url(#colorCpu)" isAnimationActive={false} />
+              <Area type="monotone" dataKey="value" stroke="#00f5ff" strokeWidth={2} fillOpacity={1} fill="url(#colorCpu)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -334,7 +321,7 @@ const ChartsPanel = ({ metrics }) => {
               <XAxis dataKey="time" hide />
               <YAxis hide domain={[0, 100]} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorRam)" isAnimationActive={false} />
+              <Area type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={2} fillOpacity={1} fill="url(#colorRam)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -381,29 +368,27 @@ const ContainersPage = ({ containers }) => (
         <span className="bg-[#1f2937] text-cyan text-[10px] px-2 py-1 rounded-full font-bold">{containers.length} INSTANCES</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left">
           <thead className="bg-[#0a0d14]/50 text-[10px] text-gray-500 uppercase font-bold tracking-widest">
             <tr>
               <th className="px-6 py-4">ID</th>
-              <th className="px-6 py-4">Name</th>
+              <th className="px-6 py-4">Container Name</th>
+              <th className="px-6 py-4">Image Tag</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">CPU %</th>
               <th className="px-6 py-4">Memory</th>
-              <th className="px-6 py-4">Ports</th>
-              <th className="px-6 py-4">Uptime</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1f2937]">
             {containers.map((c, i) => (
               <tr key={c.id} className={`hover:bg-[#1f2937]/50 transition-colors ${i % 2 === 0 ? '' : 'bg-[#111827]/30'}`}>
-                <td className="px-6 py-4 font-mono text-gray-500">{c.id.substring(0, 12)}</td>
-                <td className="px-6 py-4">
-                  <div className="font-semibold text-gray-200">{c.name}</div>
-                  <div className="text-[10px] text-gray-500 font-mono">{c.image}</div>
-                </td>
+                <td className="px-6 py-4 font-mono text-xs text-gray-500">{c.id.substring(0, 12)}</td>
+                <td className="px-6 py-4 text-sm font-semibold text-gray-200">{c.name}</td>
+                <td className="px-6 py-4 font-mono text-xs text-gray-500">{c.image}</td>
                 <td className="px-6 py-4">
                   <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${
                     c.status === 'running' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                    c.status === 'paused' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
                     'bg-red-500/10 text-red-500 border-red-500/20'
                   }`}>
                     {c.status === 'running' && <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-blink"></div>}
@@ -411,27 +396,14 @@ const ContainersPage = ({ containers }) => (
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col space-y-1">
-                    <span className="font-mono">{c.cpu_percent}%</span>
-                    <div className="w-16 h-1 bg-[#1f2937] rounded-full overflow-hidden">
-                      <div className="h-full bg-cyan" style={{ width: `${Math.min(c.cpu_percent * 2, 100)}%` }}></div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xs font-mono text-gray-400">{c.cpu}%</span>
+                    <div className="w-16 h-1.5 bg-[#1f2937] rounded-full overflow-hidden">
+                      <div className="h-full bg-cyan" style={{ width: `${Math.min(c.cpu * 5, 100)}%` }}></div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4">
-                   <div className="flex flex-col space-y-1">
-                    <span className="font-mono">{c.memory_mb} MB</span>
-                    <div className="w-16 h-1 bg-[#1f2937] rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500" style={{ width: '40%' }}></div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-gray-500 font-mono text-[10px]">
-                  {c.ports.join(', ') || 'none'}
-                </td>
-                <td className="px-6 py-4 text-gray-400 font-mono">
-                  {c.uptime === 'N/A' ? 'N/A' : new Date(c.uptime).toLocaleTimeString()}
-                </td>
+                <td className="px-6 py-4 text-xs text-gray-400 font-mono">{c.memory}</td>
               </tr>
             ))}
           </tbody>
@@ -441,7 +413,7 @@ const ContainersPage = ({ containers }) => (
   </div>
 );
 
-const DeploymentsPage = () => {
+const DeploymentsPage = ({ onDeploy, deploying }) => {
   const [deployments, setDeployments] = useState([]);
   const [expandedLog, setExpandedLog] = useState(null);
 
@@ -453,10 +425,15 @@ const DeploymentsPage = () => {
 
   useEffect(() => {
     fetchDeployments();
-    const interval = setInterval(fetchDeployments, 5000);
+    const interval = setInterval(fetchDeployments, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  const handleTrigger = async () => {
+    await onDeploy();
+    fetchDeployments();
+  };
+  
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-12">
@@ -467,59 +444,54 @@ const DeploymentsPage = () => {
           </h3>
           <div className="flex items-center space-x-4">
             <span className="bg-[#1f2937] text-purple-400 text-[10px] px-2 py-1 rounded-full font-bold">{deployments.length} UPDATES TRACKED</span>
+            <button 
+              onClick={fetchDeployments}
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all bg-[#1f2937] text-gray-400 hover:text-cyan border border-[#1f2937] hover:border-cyan/50 shadow-lg"
+            >
+              <RefreshCcw size={14} />
+              <span>Refresh History</span>
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-[#0a0d14] text-[10px] uppercase tracking-widest text-gray-500 font-bold border-b border-[#1f2937]">
-                <th className="px-6 py-4">Version</th>
+                <th className="px-6 py-4">Version & Commit</th>
                 <th className="px-6 py-4">Service</th>
+                <th className="px-6 py-4">Update Summary</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Deployed At</th>
-                <th className="px-6 py-4">Operations</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1f2937]">
-              {deployments.map((deployment) => (
-                <React.Fragment key={deployment.id}>
-                  <tr className={`hover:bg-[#1f2937]/50 transition-colors ${deployment.status === 'RUNNING' ? 'bg-amber-500/5 border-l-2 border-amber-500' : ''}`}>
-                    <td className="px-6 py-4 font-mono text-xs text-cyan">{deployment.version}</td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-200">{deployment.service}</td>
-                    <td className="px-6 py-4">
-                      <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${
-                        deployment.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
-                        deployment.status === 'RUNNING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 
-                        'bg-red-500/10 text-red-500 border-red-500/20'
-                      }`}>
-                        {deployment.status === 'RUNNING' && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 animate-blink"></div>}
-                        {deployment.status}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-400 font-mono">{new Date(deployment.deployed_at).toLocaleString()}</td>
-                    <td className="px-6 py-4">
-                      <button onClick={() => setExpandedLog(expandedLog === deployment.id ? null : deployment.id)} className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${expandedLog === deployment.id ? 'bg-cyan text-black' : 'bg-[#1f2937] text-gray-400 hover:text-cyan'}`}>
-                        <Terminal size={12} />
-                        <span>Logs</span>
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedLog === deployment.id && (
-                    <tr className="bg-black/20">
-                      <td colSpan="5" className="px-6 py-4">
-                        <div className="bg-black text-cyan font-mono text-[13px] p-4 rounded-lg border border-cyan/10 leading-relaxed shadow-inner max-h-[200px] overflow-y-auto">
-                          {deployment.logs.split('\n').map((line, i) => (
-                            <div key={i} className="flex space-x-2">
-                              <span className="opacity-50 select-none">{'>'}</span>
-                              <span>{line.replace('>', '').trim()}</span>
-                            </div>
-                          ))}
-                          <div className="w-2 h-4 bg-cyan/50 inline-block ml-1 animate-blink"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
+              {deployments.map((d) => (
+                <tr key={d.id} className={`hover:bg-[#1f2937]/50 transition-colors ${d.status === 'RUNNING' ? 'bg-amber-500/5 border-l-2 border-amber-500' : ''}`}>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-mono text-xs text-cyan">{d.version}</span>
+                      <span className="text-[10px] text-gray-500 font-mono">#{d.commit_hash || 'manual'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-200">{d.service}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2 text-xs text-gray-300 max-w-xs overflow-hidden">
+                      <Terminal size={12} className="text-gray-500 shrink-0" />
+                      <span className="truncate">{d.logs}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${
+                      d.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                      d.status === 'RUNNING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 
+                      'bg-red-500/10 text-red-500 border-red-500/20'
+                    }`}>
+                      {d.status === 'RUNNING' && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 animate-blink"></div>}
+                      {d.status}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-gray-400 font-mono">{new Date(d.deployed_at).toLocaleString()}</td>
+                </tr>
               ))}
             </tbody>
           </table>
@@ -584,11 +556,8 @@ export default function App() {
     disk_usage_percent: 0,
     network_in_mb: 0,
     network_out_mb: 0,
-    network_speed_in: 0,
-    network_speed_out: 0,
-    cpu_history: Array(60).fill({ time: '--:--', value: 0 }),
-    memory_history: Array(60).fill({ time: '--:--', value: 0 }),
-    alerts: []
+    cpu_history: Array(10).fill({ time: '--:--', value: 0 }),
+    memory_history: Array(10).fill({ time: '--:--', value: 0 })
   });
   const [containers, setContainers] = useState([]);
   const [lastUpdated, setLastUpdated] = useState('');
@@ -603,25 +572,18 @@ export default function App() {
     try {
       const m = await axios.get(`${BASE_URL}/metrics/`);
       const rawData = m.data;
-      
-      if (!rawData) return;
-
-      const formattedCpuHistory = (rawData.cpu_history || []).map((val, idx) => ({
-        time: (rawData.timestamps && rawData.timestamps[idx]) || '--:--',
-        value: val || 0
-      }));
-      
-      const formattedMemoryHistory = (rawData.memory_history || []).map((val, idx) => ({
-        time: (rawData.timestamps && rawData.timestamps[idx]) || '--:--',
-        value: val || 0
-      }));
-
-      setMetrics({
+      setMetrics(prev => ({
+        ...prev,
         ...rawData,
-        cpu_history: formattedCpuHistory,
-        memory_history: formattedMemoryHistory,
-        alerts: rawData.alerts || []
-      });
+        cpu_history: [...prev.cpu_history.slice(1), { 
+          time: new Date().toLocaleTimeString().slice(0, 5), 
+          value: rawData.cpu_usage_percent 
+        }],
+        memory_history: [...prev.memory_history.slice(1), { 
+          time: new Date().toLocaleTimeString().slice(0, 5), 
+          value: rawData.memory_usage_percent 
+        }]
+      }));
     } catch (err) {
       console.error("Metrics fetch error:", err);
     }
@@ -676,22 +638,6 @@ export default function App() {
           <Navbar currentTime={currentTime} countdown={countdown} lastUpdated={lastUpdated} />
           
           <main className="flex-1 p-8 max-w-7xl mx-auto w-full overflow-y-auto relative">
-            {metrics.alerts && metrics.alerts.length > 0 && (
-              <div className="mb-6 space-y-2">
-                {metrics.alerts.map((alert, i) => (
-                  <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-lg border animate-pulse ${
-                    alert.level === 'critical' ? 'bg-red-500/10 border-red-500/50 text-red-500' : 'bg-amber-500/10 border-amber-500/50 text-amber-500'
-                  }`}>
-                    <div className="flex items-center space-x-3">
-                      <AlertCircle size={18} />
-                      <span className="text-sm font-bold uppercase tracking-wider">{alert.message}</span>
-                    </div>
-                    <div className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-black/20">{alert.level}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {notification && (
               <div className={`fixed top-24 right-8 z-50 animate-in slide-in-from-right duration-500 flex items-center space-x-3 px-6 py-4 rounded-xl border shadow-2xl ${
                 notification.type === 'success' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'
@@ -704,7 +650,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<DashboardPage metrics={metrics} containers={containers} deployments={[]} refreshKey={refreshKey} />} />
               <Route path="/containers" element={<ContainersPage containers={containers} />} />
-              <Route path="/deployments" element={<DeploymentsPage />} />
+              <Route path="/deployments" element={<DeploymentsPage onDeploy={handleDeploy} deploying={deploying} />} />
               <Route path="/metrics" element={<MetricsPage metrics={metrics} />} />
               <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
