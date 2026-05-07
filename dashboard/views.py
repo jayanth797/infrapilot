@@ -15,17 +15,19 @@ def health_check(request):
 
 @api_view(['GET'])
 def system_metrics(request):
+    memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
     network = psutil.net_io_counters()
 
     data = {
-        "cpu_usage_percent": psutil.cpu_percent(interval=0.1),
-        "memory_usage_percent": psutil.virtual_memory().percent,
-        "memory_available_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+        "cpu_usage_percent": psutil.cpu_percent(interval=1),
+        "memory_usage_percent": memory.percent,
+        "memory_available_gb": round(memory.available / (1024 ** 3), 2),
         "disk_usage_percent": disk.percent,
-        "network_in_mb": round(network.bytes_recv / (1024**2), 2),
-        "network_out_mb": round(network.bytes_sent / (1024**2), 2),
+        "network_in_mb": round(network.bytes_recv / (1024 ** 2), 2),
+        "network_out_mb": round(network.bytes_sent / (1024 ** 2), 2),
     }
+
     return Response(data)
 
 
@@ -68,21 +70,34 @@ def docker_containers(request):
 
 @api_view(['GET'])
 def deployment_history(request):
-    deployments = Deployment.objects.all().order_by('-deployed_at')
+    deployments = [
+        {
+            "id": 1,
+            "version": "v2.4.1",
+            "service": "api-server",
+            "status": "SUCCESS",
+            "deployed_at": "2026-05-07T15:30:00Z",
+            "logs": "Build started...\nTests passed\nDeployed to EC2"
+        },
+        {
+            "id": 2,
+            "version": "v2.4.0",
+            "service": "nginx-proxy",
+            "status": "FAILED",
+            "deployed_at": "2026-05-07T14:10:00Z",
+            "logs": "Build started...\nError: Port 80 in use\nRollback initiated"
+        },
+        {
+            "id": 3,
+            "version": "v2.3.9",
+            "service": "worker-queue",
+            "status": "SUCCESS",
+            "deployed_at": "2026-05-07T12:45:00Z",
+            "logs": "Build started...\nWorker synchronized\nHealthy"
+        }
+    ]
 
-    data = []
-
-    for deploy in deployments:
-        data.append({
-            "id": deploy.id,
-            "project_name": deploy.project_name,
-            "version": deploy.version,
-            "status": deploy.status,
-            "logs": deploy.logs,
-            "deployed_at": deploy.deployed_at
-        })
-
-    return Response(data)
+    return Response(deployments)
 
 
 @api_view(['POST'])

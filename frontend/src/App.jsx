@@ -164,16 +164,19 @@ const MetricCard = ({ icon: Icon, label, value, trend, color, refreshKey }) => {
       <div>
         <div className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">{label}</div>
         <div className="text-2xl font-bold font-mono text-gray-100">
-          {typeof value === 'number' ? value.toFixed(1) : value}{label.includes('Usage') ? '%' : ''}
+          {typeof value === 'number' ? value.toFixed(1) : value}
+          <span className="text-sm ml-1 text-gray-500 font-normal">
+            {label.includes('Usage') ? '%' : label.includes('Net') ? ' MB' : ''}
+          </span>
         </div>
       </div>
     </div>
   );
 };
 
-const SystemMetricBar = ({ label, value, color, icon: Icon }) => {
-  const isHigh = value > 80;
-  const isCritical = value > 90;
+const SystemMetricBar = ({ label, value, color, icon: Icon, unit = '%' }) => {
+  const isHigh = unit === '%' && value > 80;
+  const isCritical = unit === '%' && value > 90;
   
   return (
     <div className="space-y-2">
@@ -183,7 +186,7 @@ const SystemMetricBar = ({ label, value, color, icon: Icon }) => {
           <span className={`font-medium ${isCritical ? 'text-red-500' : 'text-gray-300'}`}>{label}</span>
           {isCritical && <AlertCircle size={14} className="text-red-500 animate-pulse" />}
         </div>
-        <span className="font-mono text-gray-400">{value.toFixed(1)}%</span>
+        <span className="font-mono text-gray-400">{value.toFixed(1)}{unit}</span>
       </div>
       <div className="h-2 bg-[#1f2937] rounded-full overflow-hidden">
         <div 
@@ -248,8 +251,8 @@ const SystemHealthPanel = ({ metrics }) => (
       <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage_percent} color="#00f5ff" icon={CpuIcon} />
       <SystemMetricBar label="Physical Memory" value={metrics.memory_usage_percent} color="#a855f7" icon={Database} />
       <SystemMetricBar label="NVMe Storage" value={metrics.disk_usage_percent} color="#f59e0b" icon={HardDrive} />
-      <SystemMetricBar label="Network Inbound" value={metrics.network_in_mb} color="#22c55e" icon={Activity} />
-      <SystemMetricBar label="Network Outbound" value={metrics.network_out_mb} color="#ef4444" icon={Shield} />
+      <SystemMetricBar label="Network Inbound" value={metrics.network_in_mb} color="#22c55e" icon={Activity} unit=" MB" />
+      <SystemMetricBar label="Network Outbound" value={metrics.network_out_mb} color="#ef4444" icon={Shield} unit=" MB" />
     </div>
 
     <div className="mt-8 p-4 bg-[#0a0d14]/50 border border-[#1f2937] rounded-lg">
