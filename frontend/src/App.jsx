@@ -52,7 +52,7 @@ const mockDeployments = [
   { id: 6, version: "v2.3.6", service: "grafana-monitor", status: "FAILED", deployed_at: "2025-05-06T14:20:00Z", duration: "1m 02s", logs: "> Build started...\n> Dependency conflict: grafana-plugin@3.1 vs @3.2\n> Build failed\n> Rolling back...\n> Rollback to v2.3.5 complete\n> Please resolve dependency conflict manually" }
 ];
 
-const BASE_URL = "http://52.91.238.70:8000";
+const BASE_URL = "http://52.91.238.70:8000/api";
 
 // --- SUB-COMPONENTS ---
 
@@ -504,9 +504,9 @@ export default function App() {
     const fetchAll = async () => {
       try {
         const [m, c, d] = await Promise.all([
-          axios.get(`${BASE_URL}/api/metrics/`),
-          axios.get(`${BASE_URL}/api/containers/`),
-          axios.get(`${BASE_URL}/api/deployments/`)
+          axios.get(`${BASE_URL}/metrics/`),
+          axios.get(`${BASE_URL}/containers/`),
+          axios.get(`${BASE_URL}/deployments/`)
         ]);
         
         // Transform the backend metrics if needed to match chart structure
