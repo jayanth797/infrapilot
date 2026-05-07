@@ -15,7 +15,7 @@ import {
   Cpu, HardDrive, Activity, LayoutDashboard, Box, 
   Bell, Clock, CheckCircle, 
   XCircle, AlertCircle, Settings, Terminal, Shield, 
-  Cpu as CpuIcon, Database, Zap
+  Cpu as CpuIcon, Database, Zap, RefreshCcw
 } from 'lucide-react';
 
 
@@ -413,7 +413,7 @@ const ContainersPage = ({ containers }) => (
   </div>
 );
 
-const DeploymentsPage = ({ deployments }) => {
+const DeploymentsPage = ({ deployments, onDeploy, deploying }) => {
   const [expandedLog, setExpandedLog] = useState(null);
   
   return (
@@ -424,7 +424,19 @@ const DeploymentsPage = ({ deployments }) => {
             <Activity size={18} className="text-purple-500" />
             <span>Infrastructure Updates</span>
           </h3>
-          <span className="bg-[#1f2937] text-purple-400 text-[10px] px-2 py-1 rounded-full font-bold">{deployments.length} DEPLOYMENTS</span>
+          <div className="flex items-center space-x-4">
+            <span className="bg-[#1f2937] text-purple-400 text-[10px] px-2 py-1 rounded-full font-bold">{deployments.length} DEPLOYMENTS</span>
+            <button 
+              onClick={onDeploy}
+              disabled={deploying}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                deploying ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+              }`}
+            >
+              <RefreshCcw size={14} className={deploying ? 'animate-spin' : ''} />
+              <span>{deploying ? 'Deploying...' : 'Deploy Now'}</span>
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -550,48 +562,66 @@ export default function App() {
   const [countdown, setCountdown] = useState(5);
   const [currentTime, setCurrentTime] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [notification, setNotification] = useState(null);
+  const [deploying, setDeploying] = useState(false);
+
+  const fetchAll = async () => {
+    // 1. Fetch System Metrics
+    try {
+      const m = await axios.get(`${BASE_URL}/metrics/`);
+      const rawData = m.data;
+      setMetrics(prev => ({
+        ...prev,
+        ...rawData,
+        cpu_history: [...prev.cpu_history.slice(1), { 
+          time: new Date().toLocaleTimeString().slice(0, 5), 
+          value: rawData.cpu_usage_percent 
+        }],
+        memory_history: [...prev.memory_history.slice(1), { 
+          time: new Date().toLocaleTimeString().slice(0, 5), 
+          value: rawData.memory_usage_percent 
+        }]
+      }));
+    } catch (err) {
+      console.error("Metrics fetch error:", err);
+    }
+
+    // 2. Fetch Containers
+    try {
+      const c = await axios.get(`${BASE_URL}/containers/`);
+      setContainers(c.data || []);
+    } catch (err) {
+      console.error("Containers fetch error:", err);
+    }
+
+    // 3. Fetch Deployments
+    try {
+      const d = await axios.get(`${BASE_URL}/deployments/`);
+      setDeployments(d.data || []);
+    } catch (err) {
+      console.error("Deployments fetch error:", err);
+    }
+
+    setLastUpdated(new Date().toLocaleTimeString());
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleDeploy = async () => {
+    setDeploying(true);
+    try {
+      const res = await axios.post(`${BASE_URL}/deploy/`);
+      setNotification({ type: 'success', message: res.data.message });
+      await fetchAll();
+    } catch (err) {
+      setNotification({ type: 'error', message: "Deployment failed. Check logs." });
+    } finally {
+      setDeploying(false);
+      setTimeout(() => setNotification(null), 5000);
+    }
+  };
 
   useEffect(() => {
     const loaderTimer = setTimeout(() => setLoading(false), 1200);
-
-    const fetchAll = async () => {
-      try {
-        const m = await axios.get(`${BASE_URL}/metrics/`);
-        const rawData = m.data;
-        setMetrics(prev => ({
-          ...prev,
-          ...rawData,
-          cpu_history: [...prev.cpu_history.slice(1), { 
-            time: new Date().toLocaleTimeString().slice(0, 5), 
-            value: rawData.cpu_usage_percent 
-          }],
-          memory_history: [...prev.memory_history.slice(1), { 
-            time: new Date().toLocaleTimeString().slice(0, 5), 
-            value: rawData.memory_usage_percent 
-          }]
-        }));
-      } catch (err) {
-        console.error("Metrics fetch error:", err);
-      }
-
-      try {
-        const c = await axios.get(`${BASE_URL}/containers/`);
-        setContainers(c.data || []);
-      } catch (err) {
-        console.error("Containers fetch error:", err);
-      }
-
-      try {
-        const d = await axios.get(`${BASE_URL}/deployments/`);
-        setDeployments(d.data || []);
-      } catch (err) {
-        console.error("Deployments fetch error:", err);
-      }
-
-      setLastUpdated(new Date().toLocaleTimeString());
-      setRefreshKey(k => k + 1);
-    };
-
     fetchAll();
     const interval = setInterval(fetchAll, 5000);
     return () => { clearTimeout(loaderTimer); clearInterval(interval); };
@@ -613,12 +643,20 @@ export default function App() {
         <div className="flex-1 flex flex-col ml-[240px]">
           <Navbar currentTime={currentTime} countdown={countdown} lastUpdated={lastUpdated} />
           
-          <main className="flex-1 p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+          <main className="flex-1 p-8 max-w-7xl mx-auto w-full overflow-y-auto relative">
+            {notification && (
+              <div className={`fixed top-24 right-8 z-50 animate-in slide-in-from-right duration-500 flex items-center space-x-3 px-6 py-4 rounded-xl border shadow-2xl ${
+                notification.type === 'success' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'
+              }`}>
+                {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                <span className="font-bold text-sm">{notification.message}</span>
+              </div>
+            )}
               
             <Routes>
               <Route path="/" element={<DashboardPage metrics={metrics} containers={containers} deployments={deployments} refreshKey={refreshKey} />} />
               <Route path="/containers" element={<ContainersPage containers={containers} />} />
-              <Route path="/deployments" element={<DeploymentsPage deployments={deployments} />} />
+              <Route path="/deployments" element={<DeploymentsPage deployments={deployments} onDeploy={handleDeploy} deploying={deploying} />} />
               <Route path="/metrics" element={<MetricsPage metrics={metrics} />} />
               <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/settings" element={<SettingsPage />} />

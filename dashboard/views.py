@@ -70,55 +70,40 @@ def docker_containers(request):
 
 @api_view(['GET'])
 def deployment_history(request):
-    deployments = [
-        {
-            "id": 1,
-            "version": "v2.4.1",
-            "service": "api-server",
-            "status": "SUCCESS",
-            "deployed_at": "2026-05-07T15:30:00Z",
-            "logs": "Build started...\nTests passed\nDeployed to EC2"
-        },
-        {
-            "id": 2,
-            "version": "v2.4.0",
-            "service": "nginx-proxy",
-            "status": "FAILED",
-            "deployed_at": "2026-05-07T14:10:00Z",
-            "logs": "Build started...\nError: Port 80 in use\nRollback initiated"
-        },
-        {
-            "id": 3,
-            "version": "v2.3.9",
-            "service": "worker-queue",
-            "status": "SUCCESS",
-            "deployed_at": "2026-05-07T12:45:00Z",
-            "logs": "Build started...\nWorker synchronized\nHealthy"
-        }
-    ]
+    deployments = Deployment.objects.all().order_by('-deployed_at')
 
-    return Response(deployments)
+    data = []
+
+    for deploy in deployments:
+        data.append({
+            "id": deploy.id,
+            "version": deploy.version,
+            "service": deploy.service,
+            "status": deploy.status,
+            "logs": deploy.logs,
+            "deployed_at": deploy.deployed_at
+        })
+
+    return Response(data)
 
 
 @api_view(['POST'])
 def trigger_deployment(request):
-    statuses = ['SUCCESS', 'FAILED']
+    # Simulated deployment logic
+    version = f"v2.5.{random.randint(0,99)}"
+    service = "InfraPilot Backend"
+    status = "SUCCESS"
+    logs = f"Pulled latest code for {version}\nRestarted backend service\nDeployment to production successful."
 
     deployment = Deployment.objects.create(
-        project_name="InfraPilot",
-        version=f"v1.{random.randint(0,9)}",
-        status=random.choice(statuses),
-        logs="""
-Pulling latest code...
-Building Docker image...
-Running tests...
-Deploying containers...
-Deployment completed.
-"""
+        service=service,
+        version=version,
+        status=status,
+        logs=logs
     )
 
     return Response({
-        "message": "Deployment Triggered",
+        "message": "InfraPilot deployment completed successfully",
         "deployment_id": deployment.id,
         "status": deployment.status
     })

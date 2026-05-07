@@ -9,7 +9,7 @@ class Deployment(models.Model):
         ('RUNNING', 'RUNNING'),
     ]
 
-    project_name = models.CharField(max_length=200)
+    service = models.CharField(max_length=200)
 
     version = models.CharField(max_length=100)
 
@@ -24,4 +24,4 @@ class Deployment(models.Model):
     deployed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.project_name} - {self.status}"
+        return f"{self.service} - {self.status}"
