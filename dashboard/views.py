@@ -5,11 +5,16 @@ import docker
 from .models import Deployment
 import random
 
+
+@api_view(['GET'])
+def health_check(request):
+    return Response({
+        "status": "InfraPilot API Running"
+    })
+
+
 @api_view(['GET'])
 def system_metrics(request):
-    """
-    Returns real-time system metrics: CPU usage and Memory usage.
-    """
     metrics = {
         "cpu_usage_percent": psutil.cpu_percent(interval=1),
         "memory_usage_percent": psutil.virtual_memory().percent,
@@ -17,11 +22,13 @@ def system_metrics(request):
     }
     return Response(metrics)
 
+
 @api_view(['GET'])
 def docker_containers(request):
     try:
         client = docker.from_env()
         containers = client.containers.list(all=True)
+
         container_data = []
 
         for container in containers:
@@ -33,8 +40,8 @@ def docker_containers(request):
             })
 
         return Response(container_data)
+
     except Exception:
-        # Fallback to mock data if Docker SDK fails (common in containerized/EC2 environments)
         mock_containers = [
             {
                 "id": "abc123",
@@ -49,34 +56,14 @@ def docker_containers(request):
                 "image": ["postgres:15"]
             }
         ]
+
         return Response(mock_containers)
 
-@api_view(['POST'])
-def trigger_deployment(request):
-    statuses = ['SUCCESS', 'FAILED']
-
-    deployment = Deployment.objects.create(
-        project_name="InfraPilot",
-        version=f"v1.{random.randint(0,9)}",
-        status=random.choice(statuses),
-        logs="""
-        Pulling latest code...
-        Building Docker image...
-        Running tests...
-        Deploying containers...
-        Deployment completed.
-        """
-    )
-
-    return Response({
-        "message": "Deployment Triggered",
-        "deployment_id": deployment.id,
-        "status": deployment.status
-    })
 
 @api_view(['GET'])
 def deployment_history(request):
     deployments = Deployment.objects.all().order_by('-deployed_at')
+
     data = []
 
     for deploy in deployments:
@@ -90,3 +77,27 @@ def deployment_history(request):
         })
 
     return Response(data)
+
+
+@api_view(['POST'])
+def trigger_deployment(request):
+    statuses = ['SUCCESS', 'FAILED']
+
+    deployment = Deployment.objects.create(
+        project_name="InfraPilot",
+        version=f"v1.{random.randint(0,9)}",
+        status=random.choice(statuses),
+        logs="""
+Pulling latest code...
+Building Docker image...
+Running tests...
+Deploying containers...
+Deployment completed.
+"""
+    )
+
+    return Response({
+        "message": "Deployment Triggered",
+        "deployment_id": deployment.id,
+        "status": deployment.status
+    })
