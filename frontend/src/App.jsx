@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  BrowserRouter as Router, 
-  Routes, 
-  Route, 
-  Link, 
-  useLocation 
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  useLocation
 } from 'react-router-dom';
-import { 
-  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend 
+import {
+  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { 
-  Cpu, HardDrive, Activity, LayoutDashboard, Box, 
-  Bell, Clock, CheckCircle, 
-  XCircle, AlertCircle, Settings, Terminal, Shield, 
+import {
+  Cpu, HardDrive, Activity, LayoutDashboard, Box,
+  Bell, Clock, CheckCircle,
+  XCircle, AlertCircle, Settings, Terminal, Shield,
   Cpu as CpuIcon, Database, Zap, RefreshCcw
 } from 'lucide-react';
 
 
-const BASE_URL = "http://52.91.238.70:8000/api";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/api`;
 
 // --- UI COMPONENTS ---
 
@@ -35,15 +35,14 @@ const Loader = () => (
 const SidebarItem = ({ icon: Icon, label, to }) => {
   const location = useLocation();
   const active = location.pathname === to;
-  
+
   return (
-    <Link 
+    <Link
       to={to}
-      className={`group flex items-center space-x-3 px-4 py-3 cursor-pointer transition-all duration-200 border-l-4 ${
-        active 
-        ? 'bg-[#0f1f2f] border-cyan text-cyan' 
+      className={`group flex items-center space-x-3 px-4 py-3 cursor-pointer transition-all duration-200 border-l-4 ${active
+        ? 'bg-[#0f1f2f] border-cyan text-cyan'
         : 'border-transparent text-gray-400 hover:bg-[#1f2937] hover:text-gray-200'
-      }`}
+        }`}
     >
       <Icon size={20} className={active ? 'text-cyan shadow-[0_0_10px_rgba(0,245,255,0.5)]' : ''} />
       <span className="font-medium">{label}</span>
@@ -59,7 +58,7 @@ const Sidebar = () => (
       </div>
       <h1 className="text-xl font-bold text-cyan tracking-tight font-mono">InfraPilot</h1>
     </div>
-    
+
     <nav className="flex-1 mt-4">
       <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/" />
       <SidebarItem icon={Box} label="Containers" to="/containers" />
@@ -82,7 +81,7 @@ const Sidebar = () => (
 const Navbar = ({ currentTime, countdown, lastUpdated }) => {
   const location = useLocation();
   const getTitle = () => {
-    switch(location.pathname) {
+    switch (location.pathname) {
       case '/': return 'Dashboard Overview';
       case '/containers': return 'Docker Containers';
       case '/deployments': return 'Deployment History';
@@ -98,7 +97,7 @@ const Navbar = ({ currentTime, countdown, lastUpdated }) => {
       <div>
         <h2 className="text-lg font-semibold text-gray-100">{getTitle()}</h2>
       </div>
-      
+
       <div className="flex items-center space-x-8">
         <div className="flex items-center space-x-2 bg-[#1f2937] px-3 py-1.5 rounded-full border border-[#374151]">
           <Clock size={16} className="text-cyan" />
@@ -110,15 +109,15 @@ const Navbar = ({ currentTime, countdown, lastUpdated }) => {
             <div className="relative w-8 h-8 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90">
                 <circle cx="16" cy="16" r="14" fill="transparent" stroke="currentColor" strokeWidth="2" className="text-gray-800" />
-                <circle 
-                  cx="16" 
-                  cy="16" 
-                  r="14" 
-                  fill="transparent" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeDasharray="88" 
-                  strokeDashoffset={88 - (countdown * 17.6)} 
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="14"
+                  fill="transparent"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray="88"
+                  strokeDashoffset={88 - (countdown * 17.6)}
                   className="text-cyan transition-all duration-1000"
                 />
               </svg>
@@ -177,7 +176,7 @@ const MetricCard = ({ icon: Icon, label, value, trend, color, refreshKey }) => {
 const SystemMetricBar = ({ label, value, color, icon: Icon, unit = '%' }) => {
   const isHigh = unit === '%' && value > 80;
   const isCritical = unit === '%' && value > 90;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center text-sm">
@@ -189,10 +188,10 @@ const SystemMetricBar = ({ label, value, color, icon: Icon, unit = '%' }) => {
         <span className="font-mono text-gray-400">{value.toFixed(1)}{unit}</span>
       </div>
       <div className="h-2 bg-[#1f2937] rounded-full overflow-hidden">
-        <div 
+        <div
           className={`h-full transition-all duration-1000 ease-out`}
-          style={{ 
-            width: `${value}%`, 
+          style={{
+            width: `${value}%`,
             backgroundColor: isCritical ? '#ef4444' : color,
             boxShadow: isHigh ? `0 0 10px ${color}80` : 'none'
           }}
@@ -246,7 +245,7 @@ const SystemHealthPanel = ({ metrics }) => (
         <span className="text-[10px] text-gray-500 uppercase font-bold">Live</span>
       </div>
     </div>
-    
+
     <div className="space-y-6">
       <SystemMetricBar label="CPU Core Cluster" value={metrics.cpu_usage_percent} color="#00f5ff" icon={CpuIcon} />
       <SystemMetricBar label="Physical Memory" value={metrics.memory_usage_percent} color="#a855f7" icon={Database} />
@@ -291,8 +290,8 @@ const ChartsPanel = ({ metrics }) => {
             <AreaChart data={metrics.cpu_history}>
               <defs>
                 <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00f5ff" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#00f5ff" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#00f5ff" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#00f5ff" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="time" hide />
@@ -314,8 +313,8 @@ const ChartsPanel = ({ metrics }) => {
             <AreaChart data={metrics.memory_history}>
               <defs>
                 <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="time" hide />
@@ -386,11 +385,10 @@ const ContainersPage = ({ containers }) => (
                 <td className="px-6 py-4 text-sm font-semibold text-gray-200">{c.name}</td>
                 <td className="px-6 py-4 font-mono text-xs text-gray-500">{c.image}</td>
                 <td className="px-6 py-4">
-                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${
-                    c.status === 'running' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
-                    c.status === 'paused' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
-                    'bg-red-500/10 text-red-500 border-red-500/20'
-                  }`}>
+                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${c.status === 'running' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                    c.status === 'paused' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                      'bg-red-500/10 text-red-500 border-red-500/20'
+                    }`}>
                     {c.status === 'running' && <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-blink"></div>}
                     {c.status.toUpperCase()}
                   </div>
@@ -433,7 +431,7 @@ const DeploymentsPage = ({ onDeploy, deploying }) => {
     await onDeploy();
     fetchDeployments();
   };
-  
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="bg-[#111827] border border-[#1f2937] rounded-xl overflow-hidden mb-12">
@@ -444,7 +442,7 @@ const DeploymentsPage = ({ onDeploy, deploying }) => {
           </h3>
           <div className="flex items-center space-x-4">
             <span className="bg-[#1f2937] text-purple-400 text-[10px] px-2 py-1 rounded-full font-bold">{deployments.length} UPDATES TRACKED</span>
-            <button 
+            <button
               onClick={fetchDeployments}
               className="flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all bg-[#1f2937] text-gray-400 hover:text-cyan border border-[#1f2937] hover:border-cyan/50 shadow-lg"
             >
@@ -481,11 +479,10 @@ const DeploymentsPage = ({ onDeploy, deploying }) => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${
-                      d.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
-                      d.status === 'RUNNING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' : 
-                      'bg-red-500/10 text-red-500 border-red-500/20'
-                    }`}>
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold border ${d.status === 'SUCCESS' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                      d.status === 'RUNNING' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' :
+                        'bg-red-500/10 text-red-500 border-red-500/20'
+                      }`}>
                       {d.status === 'RUNNING' && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 animate-blink"></div>}
                       {d.status}
                     </div>
@@ -575,13 +572,13 @@ export default function App() {
       setMetrics(prev => ({
         ...prev,
         ...rawData,
-        cpu_history: [...prev.cpu_history.slice(1), { 
-          time: new Date().toLocaleTimeString().slice(0, 5), 
-          value: rawData.cpu_usage_percent 
+        cpu_history: [...prev.cpu_history.slice(1), {
+          time: new Date().toLocaleTimeString().slice(0, 5),
+          value: rawData.cpu_usage_percent
         }],
-        memory_history: [...prev.memory_history.slice(1), { 
-          time: new Date().toLocaleTimeString().slice(0, 5), 
-          value: rawData.memory_usage_percent 
+        memory_history: [...prev.memory_history.slice(1), {
+          time: new Date().toLocaleTimeString().slice(0, 5),
+          value: rawData.memory_usage_percent
         }]
       }));
     } catch (err) {
@@ -633,20 +630,19 @@ export default function App() {
     <Router>
       <div className="flex bg-[#0a0d14] min-h-screen dot-grid selection:bg-cyan/30 selection:text-cyan">
         <Sidebar />
-        
+
         <div className="flex-1 flex flex-col ml-[240px]">
           <Navbar currentTime={currentTime} countdown={countdown} lastUpdated={lastUpdated} />
-          
+
           <main className="flex-1 p-8 max-w-7xl mx-auto w-full overflow-y-auto relative">
             {notification && (
-              <div className={`fixed top-24 right-8 z-50 animate-in slide-in-from-right duration-500 flex items-center space-x-3 px-6 py-4 rounded-xl border shadow-2xl ${
-                notification.type === 'success' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'
-              }`}>
+              <div className={`fixed top-24 right-8 z-50 animate-in slide-in-from-right duration-500 flex items-center space-x-3 px-6 py-4 rounded-xl border shadow-2xl ${notification.type === 'success' ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-red-500/10 border-red-500/50 text-red-400'
+                }`}>
                 {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
                 <span className="font-bold text-sm">{notification.message}</span>
               </div>
             )}
-              
+
             <Routes>
               <Route path="/" element={<DashboardPage metrics={metrics} containers={containers} deployments={[]} refreshKey={refreshKey} />} />
               <Route path="/containers" element={<ContainersPage containers={containers} />} />
